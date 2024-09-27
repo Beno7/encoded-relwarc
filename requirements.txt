@@ -1,0 +1,5 @@
+cffi==1.16.0
+cryptography==42.0.8
+pycparser==2.22
+PyJWT==2.6.0
+python-dotenv==1.0.1
