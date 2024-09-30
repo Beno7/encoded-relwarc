@@ -2,9 +2,9 @@
 **encrypted-relwarc** is a Python-based application that aims to encrypt text-based files within a given directory. The encryption process involves multiple methods of encryption such as base64, jwt, and randomization. The output of the procedure is a list of files with encrypted content. Each file within the resulting set corresponds to **at least** 1 file from the source directory. The application is also capable of recreating the source directory and its files from within a directory where the encrypted files are stored in as long as the keys provided in the required environment variables are the same with that of the encryption.
 
 # Usage
-Usage is as follows:
-`python encrypter.py <ENCRYPT|DECRYPT> <.env>`
-- . The first argument could either be of value **ENCRYPT** or **DECRYPT** depending on the procedure to be executed.
+The command signature is  
+`python encrypter.py <ENCRYPT|DECRYPT> <.env>`.
+- The first argument could either be of value **ENCRYPT** or **DECRYPT** depending on the procedure to be executed.
 - The second argument is the env file path to be used by the application. The env file provided will be loaded via the **dotenv** library.
 
 # Requirements
