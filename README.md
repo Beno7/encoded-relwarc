@@ -36,3 +36,5 @@ A string value indicating the JWT audience. If _None_ is provided, will default 
 **MAX_IN_ONE_FILE** must contain an integer to indicate the maximum number of files that can be within a single encrypted file. The number of files within the encrypted file is randomly selected from 1 to _MAX_IN_ONE_FILE_ value. If _None_ is provided, the application will default to a value of _5_. **ONLY** applicable in _ENCRYPT_ mode.
 ### OUTPUT_FILE_PREFIX
 **OUTPUT_FILE_PREFIX** must contain a string to serve as the prefix of the resulting set of files. For instance, if the value provided is _out_, then the resulting files would be named _out0, out1, ..., outn_. If _None_ is provided, the application will default to _out_.
+
+# Examples
