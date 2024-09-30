@@ -4,7 +4,7 @@ load_dotenv('.env' if (len(sys.argv) == 2) else sys.argv[2])
 from utils import Encoder, Decoder
 
 if __name__ == '__main__':
-    if sys.argv[1].upper() == 'ENCRYPT':
+    if sys.argv[1].upper() == 'ENCODE':
         enc = Encoder(
             os.getenv('DIR'),
             os.getenv('OUTPUT_DIR'),
@@ -17,7 +17,7 @@ if __name__ == '__main__':
             os.getenv('AUD') if os.getenv('AUD') else 'relwarc_aud',
             os.getenv('MAX_IN_ONE_FILE') if os.getenv('MAX_IN_ONE_FILE') else '5'
         )
-    elif sys.argv[1].upper() == 'DECRYPT':
+    elif sys.argv[1].upper() == 'DECODE':
         enc = Decoder(
             os.getenv('DIR'),
             os.getenv('OUTPUT_DIR'),

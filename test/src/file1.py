@@ -1,4 +1,4 @@
-import os, base64, random, jwt, copy, re
+import os, base64, random, jwt, copy, re, datetime
 
 def __jwt_encode__(data, secret, iss, aud, algo="HS256", meta={}):
     payload = {}
@@ -51,12 +51,32 @@ def __decode_str__(line, secret, iss, aud):
 
     return decStr
 
+def __to_abs__(path):
+    abs_path = path + ''
+    if not os.path.isabs(abs_path):
+        abs_path = os.path.abspath(path)
+    return os.path.normpath(abs_path)
+
+def __calc_c__(c, mode, oprnd):
+    temp_c = ord(c)
+    if mode == 'ADD':
+        temp_c += oprnd
+        if temp_c > 126:
+            temp_c = (temp_c - 126) + 32
+    elif mode == 'SUB':
+        temp_c -= oprnd
+        if temp_c < 33:
+            temp_c = 127 - (33 - temp_c)
+    else:
+        raise NotImplementedError
+    return chr(temp_c)
+
 
 class Encoder():
 
     def __init__(self, dir, output_dir, output_file_prefix, file_dividers, excemptions, backslashes, secrets, iss, aud, max_in_one_file):
-        self.__to_check_dir = dir
-        self.__output_dir = output_dir if output_dir else 'enc_out'
+        self.__to_check_dir = __to_abs__(dir)
+        self.__output_dir = __to_abs__(output_dir) if output_dir else 'enc_out'
         self.__output_file_prefix = output_file_prefix if output_file_prefix else 'out'
         self.__excempted_list = excemptions
         self.__backslashes = backslashes
@@ -77,13 +97,39 @@ class Encoder():
         print('Max number of files in an output file:', self.__max_in_one_file)
         print('File Dividers:', self.__file_dividers)
         print('\n\n')
-    
+
+    def file_reset(self):
+        self.__seed = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+
+        temp_seed = []
+        for x in self.__seed:
+            temp_seed.append(int(x))
+        
+        self.__seed = temp_seed
+        self.__counter = 0
+        self.__offset_mode = sum(temp_seed) % 2
+
+    def offset(self, c):
+        seed = self.__seed[self.__counter]
+        if self.__offset_mode == 0:
+            new_c = __calc_c__(c, 'ADD' if (self.__counter % 2) == 0 else 'SUB', seed)
+        else:
+            new_c = __calc_c__(c, 'SUB' if (self.__counter % 2) == 0 else 'ADD', seed)
+        self.update_counter()
+        return new_c
+
+    def update_counter(self):
+        self.__counter = self.__counter + 1
+        if self.__counter == len(self.__seed):
+            self.__counter = 0
+
     def start(self):
         to_parse = []
         for root, dirs, files in os.walk(self.__to_check_dir):
             for f in files:
                 to_cont = False
-                temp_file = os.path.join(root.replace(self.__to_check_dir, ''), f)
+                full_path = os.path.normpath(os.path.join(root, f))
+                temp_file = os.path.relpath(full_path, self.__to_check_dir)
                 for excemption in self.__excempted_list:
                     if excemption in temp_file:
                         to_cont = True
@@ -95,7 +141,8 @@ class Encoder():
         out_file_cnt = 0
         curr_out_file_cnt = 0
         max_in_one_file = random.randint(1, self.__max_in_one_file)
-        file_str = ""
+        self.file_reset()
+        file_str = "".join([str(c) for c in self.__seed])
         print('\nDIRECTORIES TO ENCRYPT:')
         for file in to_parse:
             file_abs = os.path.join(self.__to_check_dir, file)
@@ -107,14 +154,17 @@ class Encoder():
                     # output files
                     with open(f"{self.__output_dir}/{self.__output_file_prefix}{out_file_cnt}", "w") as output:
                         output.write(file_str)
-                    file_str = ""
                     out_file_cnt = out_file_cnt + 1
                     curr_out_file_cnt = 0
+                    self.file_reset()
+                    file_str = "".join([str(c) for c in self.__seed])
                     max_in_one_file = random.randint(1, self.__max_in_one_file)
-                file_str = file_str + ("\n" if file_str else "") + f_const + __encode_str__(
+                temp_file_str = __encode_str__(
                     file, self.__secrets[int(curr_out_file_cnt % len(self.__secrets))],
                     self.__iss, self.__aud
-                ) + f_const + "\n"
+                )
+                temp_file_str = "".join([self.offset(c) for c in list(temp_file_str)])
+                file_str = file_str + ("\n" if file_str else "") + f_const + temp_file_str + f_const + "\n"
 
                 count = 0
                 # Strips the newline character
@@ -135,6 +185,7 @@ class Encoder():
                             file_str = file_str + mystr
                         else:
                             mystr = __encode_str__(line, secret, self.__iss, self.__aud)
+                            mystr = "".join([self.offset(c) for c in list(mystr)])
                             file_str = file_str + mystr + (self.__backslashes + ['\n'])[random.randint(0, len(self.__backslashes))]
                         
                         count = count + 1
@@ -148,8 +199,8 @@ class Encoder():
 class Decoder():
 
     def __init__(self, dir, output_dir, file_dividers, excemptions, backslashes, secrets, iss, aud):
-        self.__to_check_dir = dir
-        self.__output_dir = output_dir if output_dir else 'dec_out'
+        self.__to_check_dir = __to_abs__(dir)
+        self.__output_dir = __to_abs__(output_dir) if output_dir else 'dec_out'
         self.__excempted_list = excemptions
         self.__backslashes = backslashes
         self.__backslash_regex = "|".join([re.escape(b) for b in self.__backslashes])
@@ -169,12 +220,38 @@ class Decoder():
         print('File Dividers:', self.__file_dividers)
         print('\n\n')
     
+    def file_reset(self, line):
+        self.__seed = line + ""
+
+        temp_seed = []
+        for x in self.__seed:
+            temp_seed.append(int(x))
+        
+        self.__seed = temp_seed
+        self.__counter = 0
+        self.__offset_mode = sum(temp_seed) % 2
+
+    def offset(self, c):
+        seed = self.__seed[self.__counter]
+        if self.__offset_mode == 1:
+            new_c = __calc_c__(c, 'ADD' if (self.__counter % 2) == 0 else 'SUB', seed)
+        else:
+            new_c = __calc_c__(c, 'SUB' if (self.__counter % 2) == 0 else 'ADD', seed)
+        self.update_counter()
+        return new_c
+
+    def update_counter(self):
+        self.__counter = self.__counter + 1
+        if self.__counter == len(self.__seed):
+            self.__counter = 0
+    
     def start(self):
         to_parse = []
         for root, dirs, files in os.walk(self.__to_check_dir):
             for f in files:
                 to_cont = False
-                temp_file = os.path.join(root.replace(self.__to_check_dir, ''), f)
+                full_path = os.path.normpath(os.path.join(root, f))
+                temp_file = os.path.relpath(full_path, self.__to_check_dir)
                 for excemption in self.__excempted_list:
                     if excemption in temp_file:
                         to_cont = True
@@ -194,7 +271,12 @@ class Decoder():
             print('-', file_abs)
             with open(file_abs, 'r') as iter_to_parse:
                 lines = iter_to_parse.readlines()
+                has_seed = False
                 for line in lines:
+                    if has_seed == False:
+                        has_seed = True
+                        self.file_reset(line.strip())
+                        continue
                     div_idx = -1
                     for idx, f_const in enumerate(self.__file_dividers):
                         if line.strip().startswith(f_const) and line.strip().endswith(f_const):
@@ -202,6 +284,7 @@ class Decoder():
                             break
                     if div_idx > -1:
                         line = line.strip().replace(f_const, "")
+                        line = "".join([self.offset(c) for c in list(line)])
                         line = __decode_str__(line, self.__secrets[int(curr_out_file_cnt % len(self.__secrets))], self.__iss, self.__aud)
                         if running_fname is not None and running_fcontent is not None:
                             running_fcontent = running_fcontent.strip() + '\n'
@@ -221,9 +304,13 @@ class Decoder():
                         # replace backslashes with \n
                         line_exp = re.split(self.__backslash_regex, line) if len(self.__backslashes) > 0 else [line + '']
                         for line_exp_entry in line_exp:
-                            dec_line_exp_entry = '' if line_exp_entry == '' else __decode_str__(
-                                line_exp_entry, self.__secrets[int(count % len(self.__secrets))], self.__iss, self.__aud
-                            )
+                            if line_exp_entry == '':
+                                dec_line_exp_entry = ''
+                            else:
+                                dec_line_exp_entry = "".join([self.offset(c) for c in list(line_exp_entry)])
+                                dec_line_exp_entry = __decode_str__(
+                                    dec_line_exp_entry, self.__secrets[int(count % len(self.__secrets))], self.__iss, self.__aud
+                                )
                             running_fcontent = running_fcontent + dec_line_exp_entry + '\n'
                             count = count + 1
                 running_fcontent = running_fcontent.strip() + '\n'
