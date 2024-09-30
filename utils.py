@@ -54,7 +54,7 @@ def __decode_str__(line, secret, iss, aud):
 
 class Encoder():
 
-    def __init__(self, dir, output_dir, output_file_prefix, file_divider, excemptions, backslashes, secrets, iss, aud, max_in_one_file):
+    def __init__(self, dir, output_dir, output_file_prefix, file_dividers, excemptions, backslashes, secrets, iss, aud, max_in_one_file):
         self.__to_check_dir = dir
         self.__output_dir = output_dir if output_dir else 'enc_out'
         self.__output_file_prefix = output_file_prefix if output_file_prefix else 'out'
@@ -64,7 +64,7 @@ class Encoder():
         self.__iss = iss
         self.__aud = aud
         self.__max_in_one_file = int(max_in_one_file)
-        self.__file_divider = file_divider if file_divider else '======'
+        self.__file_dividers = file_dividers if file_dividers else ['======']
         print('CONFIGS:')
         print('Input Directory:', self.__to_check_dir)
         print('Output Directory:', self.__output_dir)
@@ -75,7 +75,7 @@ class Encoder():
         print('JWT ISS:', self.__iss)
         print('JWT AUD', self.__aud)
         print('Max number of files in an output file:', self.__max_in_one_file)
-        print('File Divider:', self.__file_divider)
+        print('File Dividers:', self.__file_dividers)
         print('\n\n')
     
     def start(self):
@@ -96,10 +96,10 @@ class Encoder():
         curr_out_file_cnt = 0
         max_in_one_file = random.randint(1, self.__max_in_one_file)
         file_str = ""
-        f_const = self.__file_divider + ""
         print('\nDIRECTORIES TO ENCRYPT:')
         for file in to_parse:
             file_abs = os.path.join(self.__to_check_dir, file)
+            f_const = self.__file_dividers[random.randint(0, len(self.__file_dividers) - 1)] + ""
             print('-', file_abs)
             with open(file_abs, 'r') as iter_to_parse:
                 lines = iter_to_parse.readlines()
@@ -147,7 +147,7 @@ class Encoder():
 
 class Decoder():
 
-    def __init__(self, dir, output_dir, file_divider, excemptions, backslashes, secrets, iss, aud):
+    def __init__(self, dir, output_dir, file_dividers, excemptions, backslashes, secrets, iss, aud):
         self.__to_check_dir = dir
         self.__output_dir = output_dir if output_dir else 'dec_out'
         self.__excempted_list = excemptions
@@ -156,7 +156,7 @@ class Decoder():
         self.__secrets = secrets
         self.__iss = iss
         self.__aud = aud
-        self.__file_divider = file_divider if file_divider else '======'
+        self.__file_dividers = file_dividers if file_dividers else ['======']
         print('CONFIGS:')
         print('Input Directory:', self.__to_check_dir)
         print('Output Directory:', self.__output_dir)
@@ -166,7 +166,7 @@ class Decoder():
         print('Secrets:', self.__secrets)
         print('JWT ISS:', self.__iss)
         print('JWT AUD', self.__aud)
-        print('File Divider:', self.__file_divider)
+        print('File Dividers:', self.__file_dividers)
         print('\n\n')
     
     def start(self):
@@ -183,7 +183,7 @@ class Decoder():
                 to_parse.append(temp_file)
         print("\nFiles to parse:", to_parse)
 
-        f_const = self.__file_divider + ""
+        # f_const = self.__file_dividers + ""
         count = 0
         running_fname = None
         running_fcontent = None
@@ -195,7 +195,12 @@ class Decoder():
             with open(file_abs, 'r') as iter_to_parse:
                 lines = iter_to_parse.readlines()
                 for line in lines:
-                    if line.strip().startswith(f_const) and line.strip().endswith(f_const):
+                    div_idx = -1
+                    for idx, f_const in enumerate(self.__file_dividers):
+                        if line.strip().startswith(f_const) and line.strip().endswith(f_const):
+                            div_idx = idx
+                            break
+                    if div_idx > -1:
                         line = line.strip().replace(f_const, "")
                         line = __decode_str__(line, self.__secrets[int(curr_out_file_cnt % len(self.__secrets))], self.__iss, self.__aud)
                         if running_fname is not None and running_fcontent is not None:
