@@ -51,18 +51,12 @@ def __decode_str__(line, secret, iss, aud):
 
     return decStr
 
-def __to_abs__(path):
-    abs_path = path + ''
-    if not os.path.isabs(abs_path):
-        abs_path = os.path.abspath(path)
-    return os.path.normpath(abs_path)
-
 
 class Encoder():
 
     def __init__(self, dir, output_dir, output_file_prefix, file_dividers, excemptions, backslashes, secrets, iss, aud, max_in_one_file):
-        self.__to_check_dir = __to_abs__(dir)
-        self.__output_dir = __to_abs__(output_dir) if output_dir else 'enc_out'
+        self.__to_check_dir = dir
+        self.__output_dir = output_dir if output_dir else 'enc_out'
         self.__output_file_prefix = output_file_prefix if output_file_prefix else 'out'
         self.__excempted_list = excemptions
         self.__backslashes = backslashes
@@ -89,8 +83,7 @@ class Encoder():
         for root, dirs, files in os.walk(self.__to_check_dir):
             for f in files:
                 to_cont = False
-                full_path = os.path.normpath(os.path.join(root, f))
-                temp_file = os.path.relpath(full_path, self.__to_check_dir)
+                temp_file = os.path.join(root.replace(self.__to_check_dir, ''), f)
                 for excemption in self.__excempted_list:
                     if excemption in temp_file:
                         to_cont = True
@@ -155,8 +148,8 @@ class Encoder():
 class Decoder():
 
     def __init__(self, dir, output_dir, file_dividers, excemptions, backslashes, secrets, iss, aud):
-        self.__to_check_dir = __to_abs__(dir)
-        self.__output_dir = __to_abs__(output_dir) if output_dir else 'dec_out'
+        self.__to_check_dir = dir
+        self.__output_dir = output_dir if output_dir else 'dec_out'
         self.__excempted_list = excemptions
         self.__backslashes = backslashes
         self.__backslash_regex = "|".join([re.escape(b) for b in self.__backslashes])
@@ -181,8 +174,7 @@ class Decoder():
         for root, dirs, files in os.walk(self.__to_check_dir):
             for f in files:
                 to_cont = False
-                full_path = os.path.normpath(os.path.join(root, f))
-                temp_file = os.path.relpath(full_path, self.__to_check_dir)
+                temp_file = os.path.join(root.replace(self.__to_check_dir, ''), f)
                 for excemption in self.__excempted_list:
                     if excemption in temp_file:
                         to_cont = True

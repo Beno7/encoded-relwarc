@@ -37,4 +37,19 @@ A string value indicating the JWT audience. If _None_ is provided, will default 
 ### OUTPUT_FILE_PREFIX
 **OUTPUT_FILE_PREFIX** must contain a string to serve as the prefix of the resulting set of files. For instance, if the value provided is _out_, then the resulting files would be named _out0, out1, ..., outn_. If _None_ is provided, the application will default to _out_.
 
-# Examples
+# Example
+The repository includes an example **test** directory to demonstrate how the encryption works. The example provided has been tested in Windows 10, but should run in other Operating Systems as well.
+
+Given the environment variables and the **src** directory in **test**, run the application with the following arguments to encrypt the files into **test\src**:
+
+```
+python encrypter.py ENCRYPT test\.test.enc.env
+```
+
+. The application can also decrypt the encrypted files by running the following:
+
+```
+python encrypter.py DECRYPT test\.test.dec.env
+```
+
+. Additional information regarding the environment variables during the test could be found in `test\.test.dec.env` and `test\.test.enc.env`. Each environment variables are explained within this **README.md** file.
