@@ -39,6 +39,11 @@ A string value indicating the JWT audience. If _None_ is provided, will default 
 ### KEYS_DIR
 **KEYS_DIR** must contain the path of the keys file generated during the _ENCODE_ mode. Can contain either an absolute or relative path. If a relative path is provided, the path value will be concatenated to the **DIR** variable's value. **ONLY** applicable during _DECODE_ mode.
 
+# Notes
+- The encoding process will generate a key file required during the _DECODE_ mode. The generated file will be of format `<uuidv4>.keys`. The contents of the file will also be printed out upon _ENCODE_ mode execution.
+- The contents of the files generated during _ENCODE_ mode must not be changed prior to the execution of _DECODE_ mode.
+- The names of the generated _ENCODE_ files must not be altered prior to the execution of _DECODE_ mode.
+
 # Example
 The repository includes an example **test** directory to demonstrate how the encoding works. The example provided has been tested in Windows 10, but should run in other Operating Systems as well.
 
