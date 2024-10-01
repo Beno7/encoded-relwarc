@@ -1,4 +1,4 @@
-import os, base64, random, jwt, copy, re, datetime
+import os, base64, random, jwt, copy, re, datetime, uuid
 
 def __jwt_encode__(data, secret, iss, aud, algo="HS256", meta={}):
     payload = {}
@@ -85,6 +85,7 @@ class Encoder():
         self.__aud = aud
         self.__max_in_one_file = int(max_in_one_file)
         self.__file_dividers = file_dividers if file_dividers else ['======']
+        self.__seeds = []
         print('CONFIGS:')
         print('Input Directory:', self.__to_check_dir)
         print('Output Directory:', self.__output_dir)
@@ -99,15 +100,21 @@ class Encoder():
         print('\n\n')
 
     def file_reset(self):
-        self.__seed = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+        self.__seed = int( datetime.datetime.now().strftime("%M%d%H%j%m%S%f%y%W") )
+        random.seed(self.__seed)
+        myrand = random.randint(1,999)
+        self.__seed *= myrand
+        if self.__seed % 10 == 0:
+            self.__seed -= 1
+        self.__seeds.append(str(self.__seed))
 
         temp_seed = []
-        for x in self.__seed:
-            temp_seed.append(int(x))
+        for c in self.__seeds[len(self.__seeds) - 1]:
+            temp_seed.append(int(c))
         
         self.__seed = temp_seed
         self.__counter = 0
-        self.__offset_mode = sum(temp_seed) % 2
+        self.__offset_mode = sum(self.__seed) % 2
 
     def offset(self, c):
         seed = self.__seed[self.__counter]
@@ -122,6 +129,13 @@ class Encoder():
         self.__counter = self.__counter + 1
         if self.__counter == len(self.__seed):
             self.__counter = 0
+
+    def dump_keys(self):
+        file_str = str(uuid.uuid4()) + '.keys'
+        keys = base64.b64encode((",".join(self.__seeds)).encode('ascii')).decode('ascii')
+        print('\nKEYS:', keys)
+        with open(os.path.join(self.__output_dir, file_str), 'w') as output:
+            output.write(keys)
 
     def start(self):
         to_parse = []
@@ -138,12 +152,12 @@ class Encoder():
                 to_parse.append(temp_file)
         print("\nFiles to parse:", to_parse)
 
-        out_file_cnt = 0
+        out_file_cnt = 1
         curr_out_file_cnt = 0
         max_in_one_file = random.randint(1, self.__max_in_one_file)
         self.file_reset()
-        file_str = "".join([str(c) for c in self.__seed])
-        print('\nDIRECTORIES TO ENCRYPT:')
+        file_str = ""
+        print('\nDIRECTORIES TO ENCODE:')
         for file in to_parse:
             file_abs = os.path.join(self.__to_check_dir, file)
             f_const = self.__file_dividers[random.randint(0, len(self.__file_dividers) - 1)] + ""
@@ -157,13 +171,13 @@ class Encoder():
                     out_file_cnt = out_file_cnt + 1
                     curr_out_file_cnt = 0
                     self.file_reset()
-                    file_str = "".join([str(c) for c in self.__seed])
+                    file_str = ""
                     max_in_one_file = random.randint(1, self.__max_in_one_file)
                 temp_file_str = __encode_str__(
                     file, self.__secrets[int(curr_out_file_cnt % len(self.__secrets))],
                     self.__iss, self.__aud
                 )
-                temp_file_str = "".join([self.offset(c) for c in list(temp_file_str)])
+                temp_file_str = "".join([self.offset(c) for c in temp_file_str])
                 file_str = file_str + ("\n" if file_str else "") + f_const + temp_file_str + f_const + "\n"
 
                 count = 0
@@ -185,7 +199,7 @@ class Encoder():
                             file_str = file_str + mystr
                         else:
                             mystr = __encode_str__(line, secret, self.__iss, self.__aud)
-                            mystr = "".join([self.offset(c) for c in list(mystr)])
+                            mystr = "".join([self.offset(c) for c in mystr])
                             file_str = file_str + mystr + (self.__backslashes + ['\n'])[random.randint(0, len(self.__backslashes))]
                         
                         count = count + 1
@@ -193,25 +207,29 @@ class Encoder():
         # output files
         with open(f"{self.__output_dir}/{self.__output_file_prefix}{out_file_cnt}", "w") as output:
             output.write(file_str)
-        print('\nENCRYPTION DONE!!!')
+        print('\nENCODING DONE!!!')
+        self.dump_keys()
 
 
 class Decoder():
 
-    def __init__(self, dir, output_dir, file_dividers, excemptions, backslashes, secrets, iss, aud):
+    def __init__(self, dir, output_dir, enc_file_prefix, file_dividers, backslashes, secrets, iss, aud, key_dir):
         self.__to_check_dir = __to_abs__(dir)
         self.__output_dir = __to_abs__(output_dir) if output_dir else 'dec_out'
-        self.__excempted_list = excemptions
+        self.__file_prefix = enc_file_prefix
+        # self.__excempted_list = excemptions
         self.__backslashes = backslashes
         self.__backslash_regex = "|".join([re.escape(b) for b in self.__backslashes])
         self.__secrets = secrets
         self.__iss = iss
         self.__aud = aud
         self.__file_dividers = file_dividers if file_dividers else ['======']
+        self.__file_counter = 0
+        self.__keys = self.__read_keys__(key_dir)
         print('CONFIGS:')
         print('Input Directory:', self.__to_check_dir)
         print('Output Directory:', self.__output_dir)
-        print('Excempted Files:', self.__excempted_list)
+        # print('Excempted Files:', self.__excempted_list)
         print('Backslashes:', self.__backslashes)
         print('Backslash Regex:', self.__backslash_regex)
         print('Secrets:', self.__secrets)
@@ -219,9 +237,20 @@ class Decoder():
         print('JWT AUD', self.__aud)
         print('File Dividers:', self.__file_dividers)
         print('\n\n')
-    
-    def file_reset(self, line):
-        self.__seed = line + ""
+
+    def __read_keys__(self, key_dir):
+        key_dir = os.path.normpath(key_dir)
+        if not os.path.isabs(key_dir):
+            key_dir = os.path.join(self.__to_check_dir, key_dir)
+        with open(key_dir, 'r') as iter_to_parse:
+            keys = (iter_to_parse.readlines())[0]
+        keys = keys.encode('ascii')
+        keys = base64.b64decode(keys)
+        keys = keys.decode('ascii')
+        return keys.split(',')
+
+    def file_reset(self):
+        self.__seed = str(self.__keys[self.__file_counter])
 
         temp_seed = []
         for x in self.__seed:
@@ -230,6 +259,7 @@ class Decoder():
         self.__seed = temp_seed
         self.__counter = 0
         self.__offset_mode = sum(temp_seed) % 2
+        self.__file_counter += 1
 
     def offset(self, c):
         seed = self.__seed[self.__counter]
@@ -249,34 +279,32 @@ class Decoder():
         to_parse = []
         for root, dirs, files in os.walk(self.__to_check_dir):
             for f in files:
-                to_cont = False
+                # to_cont = False
                 full_path = os.path.normpath(os.path.join(root, f))
                 temp_file = os.path.relpath(full_path, self.__to_check_dir)
-                for excemption in self.__excempted_list:
-                    if excemption in temp_file:
-                        to_cont = True
-                if to_cont:
-                    continue
-                to_parse.append(temp_file)
+                # for excemption in self.__excempted_list:
+                #     if excemption in temp_file:
+                #         to_cont = True
+                # if to_cont:
+                #     continue
+                if os.path.isfile(full_path) and os.path.basename(full_path).startswith(self.__file_prefix):
+                    to_parse.append({"temp_file": temp_file, "order": int(os.path.basename(full_path).replace(self.__file_prefix, ""))})
+        to_parse.sort(key=lambda x: x['order'])
+        to_parse = [x['temp_file'] for x in to_parse]
         print("\nFiles to parse:", to_parse)
 
-        # f_const = self.__file_dividers + ""
         count = 0
         running_fname = None
         running_fcontent = None
-        print('\nDIRECTORIES TO DECRYPT:')
+        print('\nDIRECTORIES TO DECODE:')
         for file in to_parse:
+            self.file_reset()
             curr_out_file_cnt = 0
             file_abs = os.path.join(self.__to_check_dir, file)
             print('-', file_abs)
             with open(file_abs, 'r') as iter_to_parse:
                 lines = iter_to_parse.readlines()
-                has_seed = False
                 for line in lines:
-                    if has_seed == False:
-                        has_seed = True
-                        self.file_reset(line.strip())
-                        continue
                     div_idx = -1
                     for idx, f_const in enumerate(self.__file_dividers):
                         if line.strip().startswith(f_const) and line.strip().endswith(f_const):
@@ -284,7 +312,7 @@ class Decoder():
                             break
                     if div_idx > -1:
                         line = line.strip().replace(f_const, "")
-                        line = "".join([self.offset(c) for c in list(line)])
+                        line = "".join([self.offset(c) for c in line])
                         line = __decode_str__(line, self.__secrets[int(curr_out_file_cnt % len(self.__secrets))], self.__iss, self.__aud)
                         if running_fname is not None and running_fcontent is not None:
                             running_fcontent = running_fcontent.strip() + '\n'
@@ -321,4 +349,4 @@ class Decoder():
                     os.makedirs(dirs, exist_ok=True)
                 with open(os.path.join(self.__output_dir, running_fname), 'w') as output:
                     output.write(running_fcontent)
-        print('\nDECRYPTION DONE!!!')
+        print('\nDECODING DONE!!!')

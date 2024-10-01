@@ -17,11 +17,11 @@ The python libraries required by the application are listed in **requirements.tx
 ## Environment Files and Variables
 The application requires the definition of Environment Variables provided via an Environment File. Each variable is as follows:
 ### DIR
-For argument of type _ENCODE_, the **DIR** must contain a string indicating a directory path where the set of files and directories to be encoded are located. Likewise for _DECODE_ mode, the **DIR** must contain a string indicating a directory path where the list of encoded files to be decoded are located.
+For argument of type _ENCODE_, the **DIR** must contain a string indicating a directory path where the set of files and directories to be encoded are located. Likewise for _DECODE_ mode, the **DIR** must contain a string indicating a directory path where the list of encoded files to be decoded are located. The directory could either be an absolute or a relative path.
 ### OUTPUT_DIR
-**OUTPUT_DIR** must contain a string indicating a directory path where the output files would be  created. For _ENCODE_ mode, the directory will contain the encoded files. Otherwise for _DECODE_ the directory will contain the recreated and / or decoded files.
+**OUTPUT_DIR** must contain a string indicating a directory path where the output files would be created. For _ENCODE_ mode, the directory will contain the encoded files. Otherwise for _DECODE_ the directory will contain the recreated and / or decoded files. The directory could either be an absolute or a relative path. Defaults to *enc_out* in _ENCODE_ mode, and *dec_out* in _DECODE_ mode.
 ### EXCEMPTIONS
-**EXCEMPTIONS** must contain a comma-separated list of strings. The application will then ignore any file containing at least one of the provided strings. If _NONE_ is provided, the application will attempt to encode / decode all files within the provided directory **DIR**.
+**EXCEMPTIONS** must contain a comma-separated list of strings. The application will then ignore any file containing at least one of the provided strings. If _NONE_ is provided, the application will attempt to encode / decode all files within the provided directory **DIR**. Only applicable in mode _DECODE_
 ### BACKSLASHES
 **BACKSLASHES** must contain a comma-separated list of strings. The application will then randomly choose one of these (along with the actual newline character) to replace newlines with. Each string must be unique enough to be discernible during the _DECODE_ mode. If _None_ is provided, newlines will remain as-is. Strings included in the **BACKSLASHES** variable must neither be included, nor be a substring of an entry in **FILE_DIVIDERS**. The order of values in the comma-separated list need not matter in either the _ENCODE_ and _DECODE_ mode.
 ### FILE_DIVIDERS
@@ -35,7 +35,9 @@ A string value indicating the JWT audience. If _None_ is provided, will default 
 ### MAX_IN_ONE_FILE
 **MAX_IN_ONE_FILE** must contain an integer to indicate the maximum number of files that can be within a single encoded file. The number of files within the encoded file is randomly selected from 1 to _MAX_IN_ONE_FILE_ value. If _None_ is provided, the application will default to a value of _5_. **ONLY** applicable in _ENCODE_ mode.
 ### OUTPUT_FILE_PREFIX
-**OUTPUT_FILE_PREFIX** must contain a string to serve as the prefix of the resulting set of files. For instance, if the value provided is _out_, then the resulting files would be named _out0, out1, ..., outn_. If _None_ is provided, the application will default to _out_.
+**OUTPUT_FILE_PREFIX** must contain a string to serve as the prefix of the resulting set of encoded files during _ENCODE_ mode. For instance, if the value provided is _out_, then the resulting files would be named _out0, out1, ..., outn_. If _None_ is provided, the application will default to _out_. For _DECODE_ mode, the application will only attempt to decode files that starts with the value of **OUTPUT_FILE_PREFIX**.
+### KEYS_DIR
+**KEYS_DIR** must contain the path of the keys file generated during the _ENCODE_ mode. Can contain either an absolute or relative path. If a relative path is provided, the path value will be concatenated to the **DIR** variable's value. **ONLY** applicable during _DECODE_ mode.
 
 # Example
 The repository includes an example **test** directory to demonstrate how the encoding works. The example provided has been tested in Windows 10, but should run in other Operating Systems as well.
