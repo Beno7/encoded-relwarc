@@ -21,7 +21,7 @@ For argument of type _ENCODE_, the **DIR** must contain a string indicating a di
 ### OUTPUT_DIR
 **OUTPUT_DIR** must contain a string indicating a directory path where the output files would be created. For _ENCODE_ mode, the directory will contain the encoded files. Otherwise for _DECODE_ the directory will contain the recreated and / or decoded files. The directory could either be an absolute or a relative path. Defaults to *enc_out* in _ENCODE_ mode, and *dec_out* in _DECODE_ mode.
 ### EXCEMPTIONS
-**EXCEMPTIONS** must contain a comma-separated list of strings. The application will then ignore any file containing at least one of the provided strings. If _NONE_ is provided, the application will attempt to encode / decode all files within the provided directory **DIR**. Only applicable in mode _DECODE_
+**EXCEMPTIONS** must contain a comma-separated list of strings. The application will then ignore any file with a filename containing at least one of the provided strings. If _NONE_ is provided, the application will attempt to encode / decode all files within the provided directory **DIR**. Only applicable in mode _DECODE_
 ### BACKSLASHES
 **BACKSLASHES** must contain a comma-separated list of strings. The application will then randomly choose one of these (along with the actual newline character) to replace newlines with. Each string must be unique enough to be discernible during the _DECODE_ mode. If _None_ is provided, newlines will remain as-is. Strings included in the **BACKSLASHES** variable must neither be included, nor be a substring of an entry in **FILE_DIVIDERS**. The order of values in the comma-separated list need not matter in either the _ENCODE_ and _DECODE_ mode.
 ### FILE_DIVIDERS
